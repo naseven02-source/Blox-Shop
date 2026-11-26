@@ -1,6 +1,6 @@
 // ===== ຕັ້ງຄ່າ (ແກ້ບ່ອນນີ້ບ່ອນດຽວ) =====
-const SUPABASE_URL = "YOUR_SUPABASE_URL";      // ເຊັ່ນ https://xxxx.supabase.co
-const SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY"; // anon public key
+const SUPABASE_URL = "https://itlxnoyqzceoarmaclml.supabase.co";      // ເຊັ່ນ https://xxxx.supabase.co
+const SUPABASE_KEY = "sb_publishable_hYycsVjHEklWEJjj6johwg_RiJrj8U_"; // anon public key
 
 const SITE = {
   brandMain: "BLOX",
