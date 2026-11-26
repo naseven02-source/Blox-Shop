@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="lo">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blox Shop</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="snow"></div>
+
+  <div class="top">
+    <div class="brand"><span id="bMain">BLOX</span> <b id="bAcc">SHOP</b></div>
+  </div>
+
+  <a class="fab" id="fab" href="#" target="_blank" aria-label="ແຊັດກັບຮ້ານ">
+    <svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.9 2 11.7c0 2.7 1.4 5.1 3.6 6.7V22l3.3-1.8c.9.2 1.9.4 3.1.4 5.5 0 10-3.9 10-8.7S17.5 3 12 3z"/></svg>
+  </a>
+
+  <div class="wrap">
+    <div class="hero">
+      <h1 id="typer"></h1>
+      <p id="heroSub"></p>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b id="sCat">-</b><span>ໝວດ</span></div>
+      <div class="stat"><b id="sProd">-</b><span>ສິນຄ້າພ້ອມຂາຍ</span></div>
+      <div class="stat"><b id="sSold">-</b><span>ຂາຍແລ້ວ</span></div>
+    </div>
+
+    <h3 class="sec" id="secTitle"></h3>
+    <p class="sec-sub" id="secSub"></p>
+
+    <div class="msg" id="catMsg">ກຳລັງໂຫຼດ...</div>
+    <div id="cats"></div>
+
+    <div class="foot" id="foot"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="site.js"></script>
+  <script>
+    const $ = function (id) { return document.getElementById(id); };
+
+    function startTyper(TITLE) {
+      const el = $("typer");
+      el.innerHTML = "";
+      const t = document.createTextNode("");
+      const cur = document.createElement("span");
+      cur.className = "cursor"; cur.textContent = "|";
+      el.appendChild(t); el.appendChild(cur);
+      let i = 0, del = false;
+      function tick() {
+        if (!del) {
+          i++; t.textContent = TITLE.slice(0, i);
+          if (i >= TITLE.length) { del = true; return setTimeout(tick, 2800); }
+          setTimeout(tick, 110);
+        } else {
+          i--; t.textContent = TITLE.slice(0, i);
+          if (i <= 0) { del = false; return setTimeout(tick, 700); }
+          setTimeout(tick, 30);
+        }
+      }
+      tick();
+    }
+
+    async function boot() {
+      setupCommon();
+      $("heroSub").textContent = SITE.heroSub;
+      $("secTitle").textContent = SITE.secTitle;
+      $("secSub").textContent = SITE.secSub;
+      $("foot").textContent = SITE.footer;
+      startTyper(SITE.heroTitle);
+
+      const msg = $("catMsg");
+      if (!db) { msg.textContent = "ຍັງບໍ່ໄດ້ຕັ້ງຄ່າ config.js"; return; }
+      try {
+        const c = await db.from("categories").select("*").order("sort").order("created_at");
+        const p = await db.from("products").select("*");
+        if (c.error || p.error) { msg.textContent = "ໂຫຼດຂໍ້ມູນບໍ່ໄດ້ ລອງໃໝ່ພາຍຫຼັງ"; return; }
+        if (!c.data.length) { msg.textContent = "ຍັງບໍ່ມີໝວດສິນຄ້າ"; return; }
+        msg.style.display = "none";
+
+        const vis = p.data.filter(function (q) { return !q.hidden; });
+        $("sCat").textContent = c.data.length;
+        $("sProd").textContent = vis.filter(function (q) { return q.stock > 0; }).length;
+        $("sSold").textContent = p.data.reduce(function (s, q) { return s + (q.sold || 0); }, 0);
+
+        const box = $("cats");
+        c.data.forEach(function (x) {
+          const n = vis.filter(function (q) { return String(q.category_id) === String(x.id); }).length;
+          const d = document.createElement("div");
+          d.className = "cat";
+          d.innerHTML =
+            '<div class="ban"><img src="' + esc(x.img) + '" alt="' + esc(x.name) + '" /></div>' +
+            '<div class="ctitle">' + esc(x.name) + "</div>" +
+            '<div class="ccount">' + esc(x.descr) + " · ມີສິນຄ້າ " + n + " ລາຍການ</div>" +
+            '<a href="category.html?c=' + esc(x.id) + '">ສິນຄ້າທັງໝົດ</a>';
+          box.appendChild(d);
+        });
+      } catch (e) { msg.textContent = "ໂຫຼດຂໍ້ມູນບໍ່ໄດ້ ລອງໃໝ່ພາຍຫຼັງ"; }
+    }
+    boot();
+  </script>
+</body>
+</html>

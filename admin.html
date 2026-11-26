@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="lo">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>ຫຼັງບ້ານ - Blox Shop</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="top">
+    <div class="brand">ຫຼັງບ້ານ <b>ADMIN</b></div>
+    <a class="back" href="#" id="logout" style="display:none">ອອກຈາກລະບົບ</a>
+  </div>
+
+  <div class="wrap">
+    <!-- ເຂົ້າສູ່ລະບົບ -->
+    <div class="cat" id="loginBox">
+      <h4 style="margin-top:0">ເຂົ້າສູ່ລະບົບ</h4>
+      <label>ອີເມວ</label><input id="em" type="email" />
+      <label>ລະຫັດຜ່ານ</label><input id="pw" type="password" />
+      <button class="btn" id="loginBtn">ເຂົ້າສູ່ລະບົບ</button>
+      <div class="msg" id="lmsg"></div>
+    </div>
+
+    <div id="app" style="display:none">
+      <div class="row" style="margin-bottom:12px">
+        <button class="btn sm" id="tabP">ສິນຄ້າ</button>
+        <button class="btn sm ghost" id="tabC">ໝວດ</button>
+      </div>
+
+      <!-- ສິນຄ້າ -->
+      <div id="pSec">
+        <div class="cat">
+          <h4 style="margin-top:0" id="pFormTitle">ເພີ່ມສິນຄ້າ</h4>
+          <label>ໝວດ</label><select id="pCat"></select>
+          <label>ຊື່ສິນຄ້າ</label><input id="pName" />
+          <label>ລາຍລະອຽດ</label><textarea id="pDescr" rows="2"></textarea>
+          <div class="row">
+            <div><label>ລາຄາ (₭)</label><input id="pPrice" type="number" min="0" /></div>
+            <div><label>ສະຕັອກ</label><input id="pStock" type="number" min="0" /></div>
+            <div><label>ຂາຍແລ້ວ</label><input id="pSold" type="number" min="0" /></div>
+          </div>
+          <label>ປະເພດ</label>
+          <select id="pType"><option value="id">ໄອດີ (ຂາຍບັນຊີ)</option><option value="topup">ເຕີມເກມ</option></select>
+          <label>ລິ້ງຮູບ</label><input id="pImg" placeholder="https://..." />
+          <label><input id="pHidden" type="checkbox" style="width:auto;margin-right:6px" />ເຊື່ອງສິນຄ້ານີ້</label>
+          <div class="row" style="margin-top:10px">
+            <button class="btn ghost" id="pReset">ລ້າງຟອມ</button>
+            <button class="btn" id="pSave">ບັນທຶກ</button>
+          </div>
+        </div>
+        <div id="pList"></div>
+      </div>
+
+      <!-- ໝວດ -->
+      <div id="cSec" style="display:none">
+        <div class="cat">
+          <h4 style="margin-top:0" id="cFormTitle">ເພີ່ມໝວດ</h4>
+          <label>ຊື່ໝວດ</label><input id="cName" />
+          <label>ລາຍລະອຽດ</label><input id="cDescr" />
+          <label>ລິ້ງຮູບແບນເນີ</label><input id="cImg" placeholder="https://..." />
+          <label>ລຳດັບ (ເລກນ້ອຍຂຶ້ນກ່ອນ)</label><input id="cSort" type="number" value="0" />
+          <div class="row">
+            <button class="btn ghost" id="cReset">ລ້າງຟອມ</button>
+            <button class="btn" id="cSave">ບັນທຶກ</button>
+          </div>
+        </div>
+        <div id="cList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="site.js"></script>
+  <script>
+    const $ = function (id) { return document.getElementById(id); };
+    let cats = [], prods = [], editP = null, editC = null;
+
+    function show(on) {
+      $("loginBox").style.display = on ? "none" : "block";
+      $("app").style.display = on ? "block" : "none";
+      $("logout").style.display = on ? "inline" : "none";
+    }
+
+    $("loginBtn").onclick = async function () {
+      if (!db) { $("lmsg").textContent = "ຍັງບໍ່ໄດ້ຕັ້ງຄ່າ config.js"; return; }
+      const r = await db.auth.signInWithPassword({ email: $("em").value.trim(), password: $("pw").value });
+      if (r.error) { $("lmsg").textContent = "ເຂົ້າສູ່ລະບົບບໍ່ສຳເລັດ: " + r.error.message; return; }
+      show(true); loadAll();
+    };
+    $("logout").onclick = async function (e) { e.preventDefault(); await db.auth.signOut(); show(false); };
+
+    $("tabP").onclick = function () { $("pSec").style.display = "block"; $("cSec").style.display = "none"; $("tabP").classList.remove("ghost"); $("tabC").classList.add("ghost"); };
+    $("tabC").onclick = function () { $("pSec").style.display = "none"; $("cSec").style.display = "block"; $("tabC").classList.remove("ghost"); $("tabP").classList.add("ghost"); };
+
+    async function loadAll() {
+      const c = await db.from("categories").select("*").order("sort").order("created_at");
+      const p = await db.from("products").select("*").order("created_at", { ascending: false });
+      if (c.error || p.error) { alert("ໂຫຼດຂໍ້ມູນບໍ່ໄດ້: " + ((c.error || p.error).message)); return; }
+      cats = c.data; prods = p.data;
+      $("pCat").innerHTML = cats.map(function (x) { return '<option value="' + esc(x.id) + '">' + esc(x.name) + "</option>"; }).join("");
+      drawCats(); drawProds();
+    }
+
+    /* ---------- ໝວດ ---------- */
+    function drawCats() {
+      $("cList").innerHTML = cats.map(function (x) {
+        return '<div class="cat"><div class="ctitle">' + esc(x.name) + '</div><div class="ccount">' + esc(x.descr) + " · ລຳດັບ " + x.sort + "</div>" +
+          '<div class="row"><button class="btn sm" onclick="editCat(\'' + x.id + '\')">ແກ້ໄຂ</button>' +
+          '<button class="btn sm ghost" onclick="delCat(\'' + x.id + '\')">ລຶບ</button></div></div>';
+      }).join("");
+    }
+    function resetC() { editC = null; $("cFormTitle").textContent = "ເພີ່ມໝວດ"; ["cName", "cDescr", "cImg"].forEach(function (i) { $(i).value = ""; }); $("cSort").value = 0; }
+    $("cReset").onclick = resetC;
+    window.editCat = function (id) {
+      const x = cats.find(function (q) { return String(q.id) === String(id); }); if (!x) return;
+      editC = x.id; $("cFormTitle").textContent = "ແກ້ໄຂໝວດ";
+      $("cName").value = x.name; $("cDescr").value = x.descr || ""; $("cImg").value = x.img || ""; $("cSort").value = x.sort || 0;
+      window.scrollTo(0, 0);
+    };
+    window.delCat = async function (id) {
+      if (!confirm("ລຶບໝວດນີ້? ສິນຄ້າໃນໝວດຈະຖືກລຶບນຳ")) return;
+      const r = await db.from("categories").delete().eq("id", id);
+      if (r.error) return alert(r.error.message);
+      loadAll();
+    };
+    $("cSave").onclick = async function () {
+      const row = { name: $("cName").value.trim(), descr: $("cDescr").value.trim(), img: $("cImg").value.trim(), sort: Number($("cSort").value) || 0 };
+      if (!row.name) return alert("ໃສ່ຊື່ໝວດ");
+      const r = editC ? await db.from("categories").update(row).eq("id", editC) : await db.from("categories").insert(row);
+      if (r.error) return alert(r.error.message);
+      resetC(); loadAll();
+    };
+
+    /* ---------- ສິນຄ້າ ---------- */
+    function drawProds() {
+      $("pList").innerHTML = prods.map(function (x) {
+        const c = cats.find(function (q) { return String(q.id) === String(x.category_id); });
+        return '<div class="cat"><div class="ctitle">' + esc(x.name) + (x.hidden ? '<span class="tag">ເຊື່ອງ</span>' : "") + "</div>" +
+          '<div class="ccount">' + esc(c ? c.name : "-") + " · " + fmt(x.price) + " · ເຫຼືອ " + x.stock + " · ຂາຍ " + x.sold + "</div>" +
+          '<div class="row"><button class="btn sm" onclick="editProd(\'' + x.id + '\')">ແກ້ໄຂ</button>' +
+          '<button class="btn sm ghost" onclick="delProd(\'' + x.id + '\')">ລຶບ</button></div></div>';
+      }).join("");
+    }
+    function resetP() {
+      editP = null; $("pFormTitle").textContent = "ເພີ່ມສິນຄ້າ";
+      ["pName", "pDescr", "pImg"].forEach(function (i) { $(i).value = ""; });
+      $("pPrice").value = ""; $("pStock").value = 1; $("pSold").value = 0; $("pType").value = "id"; $("pHidden").checked = false;
+    }
+    $("pReset").onclick = resetP;
+    window.editProd = function (id) {
+      const x = prods.find(function (q) { return String(q.id) === String(id); }); if (!x) return;
+      editP = x.id; $("pFormTitle").textContent = "ແກ້ໄຂສິນຄ້າ";
+      $("pCat").value = x.category_id; $("pName").value = x.name; $("pDescr").value = x.descr || "";
+      $("pPrice").value = x.price; $("pStock").value = x.stock; $("pSold").value = x.sold;
+      $("pType").value = x.type || "id"; $("pImg").value = x.img || ""; $("pHidden").checked = !!x.hidden;
+      window.scrollTo(0, 0);
+    };
+    window.delProd = async function (id) {
+      if (!confirm("ລຶບສິນຄ້ານີ້?")) return;
+      const r = await db.from("products").delete().eq("id", id);
+      if (r.error) return alert(r.error.message);
+      loadAll();
+    };
+    $("pSave").onclick = async function () {
+      const row = {
+        category_id: $("pCat").value, name: $("pName").value.trim(), descr: $("pDescr").value.trim(),
+        price: Number($("pPrice").value) || 0, stock: Number($("pStock").value) || 0, sold: Number($("pSold").value) || 0,
+        type: $("pType").value, img: $("pImg").value.trim(), hidden: $("pHidden").checked
+      };
+      if (!row.category_id) return alert("ສ້າງໝວດກ່ອນ");
+      if (!row.name) return alert("ໃສ່ຊື່ສິນຄ້າ");
+      const r = editP ? await db.from("products").update(row).eq("id", editP) : await db.from("products").insert(row);
+      if (r.error) return alert(r.error.message);
+      resetP(); loadAll();
+    };
+
+    (async function () {
+      if (!db) return;
+      const s = await db.auth.getSession();
+      if (s.data && s.data.session) { show(true); resetP(); loadAll(); } else resetP();
+    })();
+  </script>
+</body>
+</html>
