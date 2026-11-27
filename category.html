@@ -5,6 +5,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ສິນຄ້າ - Blox Shop</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    /* ===== ໜ້າຕ່າງຊຳລະເງິນ QR ===== */
+    .pay-modal {
+      position: fixed; inset: 0; z-index: 1000;
+      display: none; align-items: center; justify-content: center;
+      background: rgba(0,0,0,.65); padding: 16px;
+    }
+    .pay-modal.on { display: flex; }
+    .pay-box {
+      position: relative; width: 100%; max-width: 380px;
+      max-height: 92vh; overflow-y: auto;
+      background: #0f1d3a; color: #fff;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 22px; padding: 18px; text-align: center;
+    }
+    .pay-box h4 { margin: 4px 0 14px; font-size: 22px; }
+    .pay-x {
+      position: absolute; top: 12px; right: 12px;
+      width: 38px; height: 38px; border-radius: 50%;
+      border: 0; background: rgba(255,255,255,.15);
+      color: #fff; font-size: 20px; cursor: pointer;
+    }
+    .pay-name {
+      background: rgba(255,255,255,.1); border-radius: 12px;
+      padding: 12px; font-size: 17px; margin-bottom: 12px;
+    }
+    .pay-total b { color: #22c55e; font-size: 24px; }
+    .pay-scan { margin: 10px 0; }
+    .pay-qr {
+      width: 100%; border-radius: 18px; display: block;
+      background: #fff;
+    }
+    .pay-done { width: 100%; margin-top: 14px; padding: 14px; border: 0; border-radius: 14px; background: linear-gradient(135deg, #ef4444, #b91c1c); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; box-shadow: 0 6px 18px rgba(239,68,68,.45); transition: transform .12s, filter .12s; }
+    .pay-done:hover { filter: brightness(1.08); }
+    .pay-done:active { transform: scale(.98); }
+    .pay-note { margin: 10px 0 0; font-size: 13px; opacity: .75; }
+  </style>
 </head>
 <body>
   <div id="snow"></div>
@@ -25,19 +62,17 @@
     <div id="list"></div>
   </div>
 
-  <!-- ປ່ອງສັ່ງຊື້ -->
-  <div class="modal" id="modal">
-    <div class="box">
-      <h4 id="mName"></h4>
-      <div class="price" id="mPrice"></div>
-      <div id="mTopup">
-        <label>ID / ຊື່ຜູ້ຫຼິ້ນໃນເກມ</label>
-        <input id="mPlayer" placeholder="ໃສ່ ID ເກມທີ່ຕ້ອງການເຕີມ" />
-      </div>
-      <div class="row">
-        <button class="btn ghost" onclick="closeM()">ຍົກເລີກ</button>
-        <button class="btn" onclick="sendOrder()">ສັ່ງຊື້ທາງແຊັດ</button>
-      </div>
+  <!-- ໜ້າຕ່າງຊຳລະເງິນ QR -->
+  <div class="pay-modal" id="payModal">
+    <div class="pay-box">
+      <button class="pay-x" onclick="closePay()" aria-label="ປິດ">✕</button>
+      <h4>ຊຳລະເງິນ</h4>
+      <div class="pay-name" id="payName"></div>
+      <div class="pay-total">ຍອດໂອນທັງໝົດ: <b id="payTotal"></b></div>
+      <div class="pay-scan">ສະແກນເພື່ອໂອນ</div>
+      <img class="pay-qr" id="payQR" alt="QR ຊຳລະເງິນ" />
+      <button class="pay-done" onclick="paidDone()">ໂອນແລ້ວ -> ແຄັບສະລິບທັກແຊັດຮັບຂອງ</button>
+      <p class="pay-note">* ກວດສອບຍອດເງິນໃຫ້ຖືກຕ້ອງກ່ອນໂອນ</p>
     </div>
   </div>
 
@@ -46,27 +81,27 @@
   <script src="site.js"></script>
   <script>
     const $ = function (id) { return document.getElementById(id); };
-    let cur = null, catName = "";
+    let cur = null, catName = "", orderMsg = "";
 
+    // ຮູບ QR ຮັບເງິນ (ວາງໄຟລ໌ໄວ້ໃນໂຟນເດີດຽວກັນ ຖ້າເປັນ .png ໃຫ້ປ່ຽນນາມສະກຸນ)
+    const QR_IMG = "1795345334511.jpg";
+
+    function closePay() { $("payModal").classList.remove("on"); }
+
+    // ກົດ "ສັ່ງຊື້" -> ຂຶ້ນໜ້າຕ່າງ QR ທັນທີ
     function openM(p) {
       cur = p;
-      $("mName").textContent = p.name;
-      $("mPrice").textContent = fmt(p.price);
-      $("mTopup").style.display = p.type === "topup" ? "block" : "none";
-      $("mPlayer").value = "";
-      $("modal").classList.add("on");
+      orderMsg = "ສະບາຍດີ ຢາກສັ່ງຊື້:\n• " + catName + " - " + p.name + "\n• ລາຄາ: " + fmt(p.price) + "\n• ໂອນເງິນແລ້ວ (ແນບສະລິບ)";
+      $("payName").textContent = p.name;
+      $("payTotal").textContent = fmt(p.price);
+      $("payQR").src = QR_IMG;
+      $("payModal").classList.add("on");
     }
-    function closeM() { $("modal").classList.remove("on"); }
-    function sendOrder() {
-      if (!cur) return;
-      let m = "ສະບາຍດີ ຢາກສັ່ງຊື້:\n• " + catName + " - " + cur.name + "\n• ລາຄາ: " + fmt(cur.price);
-      if (cur.type === "topup") {
-        const id = $("mPlayer").value.trim();
-        if (!id) { alert("ກະລຸນາໃສ່ ID ຜູ້ຫຼິ້ນ"); return; }
-        m += "\n• ID ເກມ: " + id;
-      }
-      window.open(chatLink(m), "_blank");
-      closeM();
+
+    // ກົດ "ໂອນແລ້ວ" -> ເປີດແຊັດ ໃຫ້ແຄັບສະລິບສົ່ງ
+    function paidDone() {
+      window.open(chatLink(orderMsg), "_blank");
+      closePay();
     }
 
     async function boot() {
