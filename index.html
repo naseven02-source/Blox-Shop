@@ -5,6 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Blox Shop</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    body { background: #0b0b14; }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background:
+        linear-gradient(rgba(0,0,0,.55), rgba(0,0,0,.55)),
+        url("1795400790146.jpg") center / cover no-repeat;
+    }
+  </style>
 </head>
 <body>
   <div id="snow"></div>
@@ -31,6 +43,8 @@
 
     <h3 class="sec" id="secTitle"></h3>
     <p class="sec-sub" id="secSub"></p>
+
+    <div id="games"></div>
 
     <div class="msg" id="catMsg">ກຳລັງໂຫຼດ...</div>
     <div id="cats"></div>
@@ -66,8 +80,29 @@
       tick();
     }
 
+    // ===== ສິນຄ້າເຕີມເກມ (ບໍ່ໃຊ້ Supabase) =====
+    // img = ຊື່ໄຟລ໌ຮູບແບນເນີ ຖ້າບໍ່ມີໄຟລ໌ ຈະບໍ່ສະແດງຮູບ
+    const GAMES = [
+      { name: "Robux",     descr: "ເຕີມ Robux", link: "robux.html",    img: "1795482900867.jpg" },
+      { name: "Free Fire", descr: "ເຕີມເພັດ Free Fire", link: "freefire.html", img: "1795497099794.jpg" }
+    ];
+    function drawGames() {
+      const box = $("games");
+      GAMES.forEach(function (g) {
+        const d = document.createElement("div");
+        d.className = "cat";
+        d.innerHTML =
+          '<div class="ban"><img src="' + esc(g.img) + '" alt="' + esc(g.name) + '" onerror="this.parentNode.style.display=\'none\'" /></div>' +
+          '<div class="ctitle">' + esc(g.name) + "</div>" +
+          '<div class="ccount">' + esc(g.descr) + "</div>" +
+          '<a href="' + esc(g.link) + '">ເຕີມເກມ</a>';
+        box.appendChild(d);
+      });
+    }
+
     async function boot() {
       setupCommon();
+      drawGames();
       $("heroSub").textContent = SITE.heroSub;
       $("secTitle").textContent = SITE.secTitle;
       $("secSub").textContent = SITE.secSub;
@@ -104,5 +139,5 @@
     }
     boot();
   </script>
-</body>
+</>
 </html>
